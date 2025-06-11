@@ -1,0 +1,70 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-06-12 00:30:46.885731",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "zort_endpoint_url",
+  "section_break_eeeu",
+  "storename",
+  "column_break_gmxg",
+  "apikey",
+  "apisecret"
+ ],
+ "fields": [
+  {
+   "fieldname": "zort_endpoint_url",
+   "fieldtype": "Data",
+   "label": "Zort Endpoint URL"
+  },
+  {
+   "fieldname": "section_break_eeeu",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "storename",
+   "fieldtype": "Data",
+   "label": "Storename"
+  },
+  {
+   "fieldname": "column_break_gmxg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "apikey",
+   "fieldtype": "Data",
+   "label": "apikey"
+  },
+  {
+   "fieldname": "apisecret",
+   "fieldtype": "Data",
+   "label": "apisecret"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-06-12 00:39:06.586641",
+ "modified_by": "Administrator",
+ "module": "Zort Connector",
+ "name": "Zort Setting",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

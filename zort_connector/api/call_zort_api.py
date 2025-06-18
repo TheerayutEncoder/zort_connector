@@ -64,7 +64,7 @@ def get_list_orders(status: int = 0):
 			f"{URL}/v4/Order/GetOrders",
 			headers=HEADER,
 			params=PARAMS,
-			timeout=10
+			timeout=20
 		)
 		response.raise_for_status()
 		data = response.json()

@@ -28,15 +28,27 @@ ZORT_CUSTOM_FIELDS = {
 			"fieldname": "zort_order_status",
 			"fieldtype": "Select",
 			"label": "Zort Order Status",
-			"options": "\nPending\nProcessing\nCompleted\nCancelled",
+			"options": "\nPending\nSuccess\nVoided\nWaiting\nReturned\nPacked\nShipping\nFailed Shipment",
 			"insert_after": "zort_sales_channel",
 		},
 		{
 			"fieldname": "payment_status",
 			"fieldtype": "Select",
 			"label": "Payment Status",
-			"options": "\nPaid\nUnpaid\nPartially Paid",
+			"options": "\nPending\nPaid\nVoided\nPartial Payment\nExcess Payment",
 			"insert_after": "zort_order_status",
+		},
+		{
+			"fieldname": "tracking_no",
+			"fieldtype": "Date",
+			"label": "Tracking No.",
+			"insert_after": "payment_status",
+		},
+		{
+			"fieldname": "sales_channel",
+			"fieldtype": "Data",
+			"label": "Sales Channel",
+			"insert_after": "tracking_no",
 		}
 	]
 }

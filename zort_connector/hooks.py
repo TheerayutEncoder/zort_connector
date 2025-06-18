@@ -100,14 +100,14 @@ app_license = "mit"
 # Name of the app being installed is passed as an argument
 
 # before_app_install = "zort_connector.utils.before_app_install"
-# after_app_install = "zort_connector.utils.after_app_install"
+after_app_install = "zort_connector.install.after_app_install"
 
 # Integration Cleanup
 # -------------------
 # To clean up dependencies/integrations with other apps
 # Name of the app being uninstalled is passed as an argument
 
-# before_app_uninstall = "zort_connector.utils.before_app_uninstall"
+before_app_uninstall = "zort_connector.utils.before_app_uninstall"
 # after_app_uninstall = "zort_connector.utils.after_app_uninstall"
 
 # Desk Notifications
@@ -142,25 +142,19 @@ app_license = "mit"
 
 # Scheduled Tasks
 # ---------------
-
 # scheduler_events = {
-# 	"all": [
-# 		"zort_connector.tasks.all"
-# 	],
-# 	"daily": [
-# 		"zort_connector.tasks.daily"
-# 	],
+#     "all": [
+#         "frappe.email.queue.flush"  # This triggers the scheduler engine
+#     ],
+#     "cron": {
+#         "* * * * *": [
+#             "zort_connector.api.custom_api.create_sales_order_from_zort"
+#         ]
+#     },
 # 	"hourly": [
-# 		"zort_connector.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"zort_connector.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"zort_connector.tasks.monthly"
-# 	],
+#         "zort_connector.api.custom_api.create_sales_order_from_zort"
+#     ],
 # }
-
 # Testing
 # -------
 

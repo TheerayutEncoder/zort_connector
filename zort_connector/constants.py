@@ -1,0 +1,42 @@
+ZORT_CUSTOM_FIELDS = {
+	"Sales Order": [
+		{
+			"fieldname": "zort_details_tab",
+			"fieldtype": "Tab Break",
+			"label": "Zort Details",
+			"insert_after": "connections_tab",
+		},
+		{
+			"fieldname": "zort_order_id",
+			"fieldtype": "Data",
+			"label": "Zort Order ID",
+			"insert_after": "zort_details_tab",
+		},
+		{
+			"fieldname": "zort_sales_order_no",
+			"fieldtype": "Data",
+			"label": "Zort Sales Order No.",
+			"insert_after": "zort_order_id",
+		},
+		{
+			"fieldname": "zort_sales_channel",
+			"fieldtype": "Data",
+			"label": "Zort Sales Channel",
+			"insert_after": "zort_sales_order_no",
+		},
+		{
+			"fieldname": "zort_order_status",
+			"fieldtype": "Select",
+			"label": "Zort Order Status",
+			"options": "\nPending\nProcessing\nCompleted\nCancelled",
+			"insert_after": "zort_sales_channel",
+		},
+		{
+			"fieldname": "payment_status",
+			"fieldtype": "Select",
+			"label": "Payment Status",
+			"options": "\nPaid\nUnpaid\nPartially Paid",
+			"insert_after": "zort_order_status",
+		}
+	]
+}

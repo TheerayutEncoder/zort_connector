@@ -8,9 +8,10 @@
   "zort_endpoint_url",
   "section_break_eeeu",
   "storename",
-  "column_break_gmxg",
   "apikey",
-  "apisecret"
+  "apisecret",
+  "column_break_gmxg",
+  "warehouse_tab"
  ],
  "fields": [
   {
@@ -40,13 +41,18 @@
    "fieldname": "apisecret",
    "fieldtype": "Data",
    "label": "apisecret"
+  },
+  {
+   "fieldname": "warehouse_tab",
+   "fieldtype": "Tab Break",
+   "label": "Warehouse"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-06-12 00:39:06.586641",
+ "modified": "2025-06-17 21:22:58.238554",
  "modified_by": "Administrator",
  "module": "Zort Connector",
  "name": "Zort Setting",
@@ -66,5 +72,6 @@
  "row_format": "Dynamic",
  "sort_field": "creation",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }

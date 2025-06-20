@@ -10,36 +10,42 @@ def create_sales_order_from_zort():
 	"""
 
 	sales_order_list = call_zort_api.get_list_orders()
-
 	if not sales_order_list:
+		print("Failed to fetch orders from Zort.")
 		return {"status": "error", "message": _("Failed to fetch orders from Zort.")}
 
 	order_list = sales_order_list.get("list", [])
-
 	if not order_list:
+		print("No orders found in Zort.")
 		return {"status": "error", "message": _("No orders found in Zort.")}
+
+	# Get existing Zort Order IDs to avoid duplicates
+	existing_zort_order_ids = get_existing_zort_order_ids()
 
 	for order in order_list:
 		prepared_data = prepare_data(order)
 
 		if prepared_data.get("status") == "error":
 			continue
+		if prepared_data.get('zort_order_id') in existing_zort_order_ids:
+			continue
 
 		try:
-			print("prepared_data.get('zort_order_id')", prepared_data.get('zort_order_id'))
-			print("prepared_data.get('zort_sales_order_no')", prepared_data.get('zort_sales_order_no'))
 			sales_order = frappe.get_doc({
 				"doctype": "Sales Order",
 				**prepared_data
 			})
 			sales_order.insert()
 			frappe.db.commit()
+
+			if check_if_sales_order_can_be_submitted(sales_order.name) and sales_order.docstatus == 0:
+				# If the Sales Order can be submitted, submit it
+				sales_order.submit()
+
 			print(f"Sales Order created: {sales_order.name}")
-			frappe.logger().info(f"Sales Order created: {sales_order.name}")
 		except Exception as e:
 			print(f"Failed to create Sales Order: {str(e)}")
 			frappe.logger().error(f"Failed to create Sales Order: {str(e)}")
-
 
 def prepare_data(data: dict):
 	"""
@@ -47,15 +53,31 @@ def prepare_data(data: dict):
 	This function can be customized to transform the incoming data as needed.
 	"""
 	if not isinstance(data, dict):
-		logger.error("Invalid data format: Expected a dictionary.")
+		print("Invalid data format received from Zort.")
 		return {"status": "error", "message": _("Invalid data format.")}
 
 	customer = create_customer_from_zort(data)
 	if not customer:
+		print("Failed to create or find customer.")
 		return {"status": "error", "message": _("Failed to create or find customer.")}
+
+	warehouse = get_warehouse_from_zort(
+		data.get("zort_sales_order_no"),
+		data.get("trackingno"),
+		data.get("description", "")
+	)
+	if not warehouse:
+		print("Failed to get warehouse.")
+		return {"status": "error", "message": _("Failed to get warehouse.")}
 
 	items = []
 	for item in data.get("list", []):
+
+		uom = create_uom_from_zort(item)
+		if not uom:
+			print("Failed to create UOM.")
+			return {"status": "error", "message": _("Failed to create UOM.")}
+
 		sku = item.get("sku")
 		item_code = sku if frappe.db.exists("Item", sku) else create_item_from_zort(item)
 
@@ -63,10 +85,39 @@ def prepare_data(data: dict):
 			"item_code": item_code,
 			"delivery_date": frappe.utils.today(),
 			"qty": float(item.get("number", 0) or 0),
-			"uom": item.get("unittext"),
+			"uom": uom,
 			"price_list_rate": float(item.get("pricepernumber", 0) or 0),
 			"discount_amount": float(item.get("discountPerNumber", 0) or 0),
 			"amount": float(item.get("totalprice", 0) or 0),
+			"warehouse": warehouse,
+		})
+
+	# Add shipping fee as an item if it exists
+	if data.get("shippingamount") > 0:
+		if not frappe.db.exists("Item", "shipping-fee"):
+			try:
+				shipping_item = frappe.get_doc({
+					"doctype": "Item",
+					"item_code": "shipping-fee",
+					"item_name": "Shipping fee",
+					"item_group": "Services",
+					"stock_uom": get_cached_value("Stock Settings", None, "stock_uom"),
+					"is_stock_item": 0,
+				})
+				shipping_item.insert()
+				frappe.db.commit()
+				print(f"Shipping Item created: {shipping_item.name}")
+			except Exception as e:
+				print(f"Failed to create Shipping Item: {str(e)}")
+				frappe.logger().error(f"Failed to create Shipping Item: {str(e)}")
+
+		items.append({
+			"item_code": "shipping-fee",
+			"delivery_date": frappe.utils.today(),
+			"qty": 1,
+			"price_list_rate": float(data.get("shippingamount", 0) or 0),
+			"discount_amount": 0.0,
+			"warehouse": warehouse,
 		})
 
 	prepared_data = {
@@ -78,15 +129,16 @@ def prepare_data(data: dict):
 		"zort_sales_channel": data.get("saleschannel"),
 		"zort_order_status": data.get("status"),
 		"tracking_no": data.get("trackingno"),
-		"sales_channel": data.get("saleschannel"),
+		"description": data.get("description", ""),
+		"shipping_channel": data.get("shippingchannel"),
 		"payment_status": data.get("paymentstatus"),
 		"items": items,
+		"discount_amount": float(data.get("discountamount", 0) or 0),
 	}
 
 	frappe.logger().info("Prepared data for Sales Order: {}".format(prepared_data))
 
 	return prepared_data
-
 
 def create_item_from_zort(item: dict) -> str:
 	"""
@@ -116,17 +168,35 @@ def create_item_from_zort(item: dict) -> str:
 
 	return item_code
 
-
 def create_customer_from_zort(data: dict) -> str:
 	"""
 	Create a Customer from Zort data.
 	This function can be customized to create a Customer in Frappe.
+	We check if the customer already exists based on the phone number. (Actually, it should be ID number))
+	If the customer does not exist, we create a new Customer and Address.
+
+	Note: If customer data following PDPA like J**n W*** (John Wick) return customer as 'Mr. Dummy Customer'
 	"""
 	customer_name = data.get("customername")
 	phone_number = data.get("customerphone")
 	if not customer_name:
 		frappe.log_error("Customer name is required to create a customer.")
 		return ""
+
+	if "*" in customer_name or "*" in phone_number:
+		if not frappe.db.exists("Customer", {"customer_name": "Mr. Dummy Customer"}):
+			try:
+				customer_doc = frappe.get_doc({
+					"doctype": "Customer",
+					"customer_name": "Mr. Dummy Customer",
+				})
+				customer_doc.insert()
+				frappe.db.commit()
+				print(f"Dummy Customer {customer_doc.name} has been created")
+			except Exception as e:
+				print(f"Failed to create Dummy Customer: {str(e)}")
+				frappe.logger().error(f"Failed to create Dummy Customer: {str(e)}")
+		return "Mr. Dummy Customer"
 
 	address_name = frappe.db.get_value("Address", {"phone": phone_number}, "name")
 	if address_name:
@@ -142,8 +212,7 @@ def create_customer_from_zort(data: dict) -> str:
 				"customer_name": customer_name,
 			})
 			customer_doc.insert()
-			print("customer_doc", customer_doc)
-			print("customer_doc.name", customer_doc.name)
+			print(f"Customer {customer_doc.name} has been created")
 
 			address_doc = frappe.get_doc({
 				"doctype": "Address",
@@ -166,54 +235,141 @@ def create_customer_from_zort(data: dict) -> str:
 				}]
 			})
 			address_doc.insert()
-			print("address_doc", address_doc)
-			print("address_doc.name", address_doc.name)
+			print(f"Address {address_doc.name} has been created")
 			frappe.db.commit()
 		except Exception as e:
+			print(f"Failed to create Customer or Address: {str(e)}")
+			# Log the error for debugging purposes
 			frappe.logger().error(f"Failed to create Customer or Address: {str(e)}")
 			return ""
 	return customer_name
 
+def create_uom_from_zort(item: dict) -> str:
+	"""
+	Create a UOM (Unit of Measure) from Zort data.
+	This function can be customized to create a UOM in Frappe.
+	"""
+	uom_name = item.get("unittext")
 
-def update_sales_order_from_zort(data):
+	if not uom_name:
+		frappe.logger().error("UOM name is required to create a UOM.")
+		return ""
+
+	if not frappe.db.exists("UOM", {"uom_name": uom_name}):
+		try:
+			uom_doc = frappe.get_doc({
+				"doctype": "UOM",
+				"uom_name": uom_name,
+				"uom_type": "Stock UOM"
+			})
+			uom_doc.insert()
+			frappe.db.commit()
+			print(f"UOM created: {uom_doc.name}")
+			frappe.logger().info(f"UOM created: {uom_doc.name}")
+		except Exception as e:
+			print(f"Failed to create UOM: {str(e)}")
+			frappe.logger().error(f"Failed to create UOM: {str(e)}")
+	else:
+		frappe.logger().info(f"UOM already exists: {uom_name}")
+
+	return uom_name
+
+def update_sales_order_from_zort():
 	"""
 	Update an existing Sales Order with data from Zort.
 	This function can be customized to update the Sales Order as needed.
 	"""
-	if not isinstance(data, dict):
-		logger.error("Invalid data format: Expected a dictionary.")
-		return {"status": "error", "message": _("Invalid data format.")}
+	existing_zort_order_ids = get_existing_zort_order_ids()
+	existing_zort_order_ids_str = ",".join(map(str, existing_zort_order_ids))
+	print("existing_zort_order_ids_str", existing_zort_order_ids_str)
 
-	# Example update logic (customize as needed)
-	# sale_order = frappe.get_doc("Sales Order", data.get("name"))
-	# sale_order.update(data)
-	# sale_order.save()
+	order_list = call_zort_api.get_list_orders(status="0,1,2",orderidlist=existing_zort_order_ids_str)
+
+	if not order_list:
+		print("Failed to fetch orders from Zort.")
+		return {"status": "error", "message": _("Failed to fetch orders from Zort.")}
+
+	for order in order_list.get("list", []):
+		so_doc = frappe.get_doc("Sales Order", {"zort_order_id": order.get("id")})
+
+		if so_doc:
+			so_doc.zort_order_status = order.get("status")
+			so_doc.payment_status = order.get("paymentstatus")
+			so_doc.tracking_no = order.get("trackingno")
+			so_doc.description = order.get("description", "")
+			# update warehouse in Items
+			warehouse = get_warehouse_from_zort(
+				zort_sales_order_no=so_doc.get("zort_sales_order_no"),
+				tracking_no=so_doc.get("tracking_no"),
+				description=so_doc.get("description", "")
+			)
+			print(f"Warehouse for Sales Order {so_doc.name}: {warehouse}")
+			if so_doc.docstatus == 0:
+				for item in so_doc.items:
+					item.warehouse = warehouse
+			so_doc.save()
+
+			# Submit Sales Order if check_if_sales_order_can_be_submitted
+			if so_doc.docstatus == 0 and check_if_sales_order_can_be_submitted(so_doc.name):
+				so_doc.submit()
+
+			# Cancel Sales order if Zort order status is "Voided"
+			if so_doc.zort_order_status == "Voided":
+				if so_doc.docstatus == 0:
+					so_doc.submit()
+				so_doc.cancel()
+		print(f"Sales Order {so_doc.name} updated with Zort data.")
 
 	return {"status": "success", "message": _("Sales Order updated successfully.")}
 
-# def cancel_sales_order_from_zort(data):
-# 	"""
-# 	Cancel a Sales Order based on data from Zort.
-# 	This function cancels the Sales Order in Frappe based on the provided Zort data.
-# 	"""
-# 	if not isinstance(data, dict):
-# 		frappe.logger().error("Invalid data format: Expected a dictionary.")
-# 		return {"status": "error", "message": _("Invalid data format.")}
+def get_warehouse_from_zort(zort_sales_order_no: str, tracking_no: str, description: str) -> str:
+	"""
+	Get the warehouse from Zort data.
+	This function can be customized to determine the warehouse based on Zort Setting.
+	"""
+	default_warehouse = get_cached_value("Zort Setting", None, "default_warehouse")
+	if not default_warehouse:
+		default_warehouse = get_cached_value("Stock Settings", None, "default_warehouse")
 
-# 	sales_order_name = frappe.db.get_value("Sales Order", {"zort_order_id": data.get("id")}, "name")
-# 	if not sales_order_name:
-# 		frappe.logger().error(f"Sales Order not found for Zort Order ID: {data.get('id')}")
-# 		return {"status": "error", "message": _("Sales Order not found.")}
+	# Check if the Zort sales order number matches the tracking number
+	# For Parabola, it means the customer will receive the order at the storefront.
+	# Then get warehouse based on description
+	if zort_sales_order_no == tracking_no:
+		if frappe.db.exists("Warehouse", {"name": description, "is_group": 0}):
+			return description
 
-# 	try:
-# 		sales_order = frappe.get_doc("Sales Order", sales_order_name)
-# 		sales_order.cancel()
-# 		frappe.db.commit()
-# 		frappe.logger().info(f"Sales Order cancelled: {sales_order_name}")
-# 		return {"status": "success", "message": _("Sales Order cancelled successfully.")}
-# 	except Exception as e:
-# 		frappe.logger().error(f"Failed to cancel Sales Order: {str(e)}")
-# 		return {"status": "error", "message": _("Failed to cancel Sales Order.")}
+	return default_warehouse
 
+def get_existing_zort_order_ids():
+	"""
+	Get a list of existing Zort Order IDs from Sales Orders.
+	This function retrieves all Sales Orders that have a Zort Order ID.
+	"""
+	zort_order_ids = [
+		int(order_id) for order_id in frappe.db.get_list(
+			"Sales Order",
+			filters={"zort_order_id": ["!=", ""]},
+			pluck="zort_order_id"
+		) if order_id.isdigit()
+	]
+	frappe.logger().info(f"Retrieved Zort Order IDs: {zort_order_ids}")
 
+	return zort_order_ids
 
+def check_if_sales_order_can_be_submitted(so_name: str = "SO00250620-002") -> bool:
+	"""
+	Check if a Sales Order can be submitted.
+	In case zort_sales_order_no is equal to tracking_no, it means the customer will receive the order at the storefront.
+	Then we check if the warehouse is set to the storefront warehouse.
+	"""
+
+	so_doc = frappe.get_doc("Sales Order", so_name)
+
+	if so_doc.zort_sales_order_no == so_doc.tracking_no and so_doc.docstatus == 0:
+		# Warehouse should get from description
+		description = so_doc.description.strip()
+		warehouse = frappe.db.exists("Warehouse", {"name": description, "is_group": 0})
+		if not warehouse:
+			return False
+
+	return True

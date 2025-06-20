@@ -8,9 +8,12 @@
   "zort_endpoint_url",
   "section_break_eeeu",
   "storename",
+  "column_break_gmxg",
   "apikey",
   "apisecret",
-  "column_break_gmxg",
+  "other_settings_section",
+  "default_warehouse",
+  "column_break_nrbt",
   "warehouse_tab"
  ],
  "fields": [
@@ -46,13 +49,29 @@
    "fieldname": "warehouse_tab",
    "fieldtype": "Tab Break",
    "label": "Warehouse"
+  },
+  {
+   "fieldname": "other_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Other Settings"
+  },
+  {
+   "fieldname": "default_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Warehouse",
+   "link_filters": "[[\"Warehouse\",\"is_group\",\"=\",0]]",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "column_break_nrbt",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-06-17 21:22:58.238554",
+ "modified": "2025-06-20 11:58:42.117313",
  "modified_by": "Administrator",
  "module": "Zort Connector",
  "name": "Zort Setting",

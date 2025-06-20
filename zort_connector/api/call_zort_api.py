@@ -18,10 +18,9 @@ HEADER = {
 }
 
 
-def get_list_orders(status: int = 0):
+def get_list_orders(status: int = 0, orderidlist: str = "", numberlist: str = "") -> dict:
 	"""
-	Fetch a list of orders based on their status.
-
+	Fetch a list of orders based on their status and optional filters.
 	:param status: int - Status of the orders to fetch.
 		Status codes:
 		0 - Pending
@@ -32,12 +31,14 @@ def get_list_orders(status: int = 0):
 		5 - Packed
 		6 - Shipping
 		7 - Failed Shipment
-		Example: "0,1,3,4"
+		Example: 0 (for Pending orders)
+	:param orderidlist: str - Comma-separated list of order IDs to filter (optional).
+	:param numberlist: str - Comma-separated list of order numbers to filter (optional).
 	:return: dict - JSON response containing the list of orders.
 	"""
 	HEADER.update({
-		"orderidlist": "",
-		"numberlist": ""
+		"orderidlist": orderidlist,
+		"numberlist": numberlist
 	})
 
 	PARAMS = {

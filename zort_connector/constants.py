@@ -64,6 +64,20 @@ ZORT_CUSTOM_FIELDS = {
 			"label": "Description",
 			"insert_after": "shipping_channel",
 			"allow_on_submit": 1,
-		}
+		},
+		{
+			"fieldname": "zort_data_section",
+			"fieldtype": "Section Break",
+			"label": "Zort Data",
+			"insert_after": "description",
+		},
+		{
+			"fieldname": "zort_api_order_data",
+			"fieldtype": "Long Text",
+			"label": "API Order Data",
+			"insert_after": "zort_data_section",
+			"read_only": 1,
+			"allow_on_submit": 1,
+		},
 	]
 }

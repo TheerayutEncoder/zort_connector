@@ -18,10 +18,10 @@ HEADER = {
 }
 
 
-def get_list_orders(status: int = 0, orderidlist: str = "", numberlist: str = "") -> dict:
+def get_list_orders(status: str = "0", orderidlist: str = "", numberlist: str = "") -> dict:
 	"""
 	Fetch a list of orders based on their status and optional filters.
-	:param status: int - Status of the orders to fetch.
+	:param status: str - Status of the orders to fetch.
 		Status codes:
 		0 - Pending
 		1 - Success
@@ -31,7 +31,7 @@ def get_list_orders(status: int = 0, orderidlist: str = "", numberlist: str = ""
 		5 - Packed
 		6 - Shipping
 		7 - Failed Shipment
-		Example: 0 (for Pending orders)
+		Example: "0,1,3,4"
 	:param orderidlist: str - Comma-separated list of order IDs to filter (optional).
 	:param numberlist: str - Comma-separated list of order numbers to filter (optional).
 	:return: dict - JSON response containing the list of orders.
@@ -74,6 +74,45 @@ def get_list_orders(status: int = 0, orderidlist: str = "", numberlist: str = ""
 		frappe.log_error(frappe.get_traceback(), _("Error fetching orders from Zort"))
 		print(_("Failed to fetch orders from Zort: {0}").format(str(e)))
 
+def update_product_available_stock_list(warehouse: str, data: dict) -> dict:
+	"""
+	Update the available stock for a product in a specific warehouse.
+	:param warehouse: str - The warehouse where the stock is to be updated.
+	:param data: dict - JSON data containing product details and stock information.
+	:return: dict - JSON response from the Zort API after updating stock.
+
+	note: Data structure should be like:
+	{
+		"stocks": [
+			{
+				"sku": "P0012",
+				"stock": 399,
+				"cost": 100
+			},
+			{
+				"sku": "P378",
+				"stock": 12,
+				"cost": 200
+			}
+		]
+	}
+	On Zort SKU refer to Item Code in ERPNext.
+	"""
+	HEADER.update({"warehouse": warehouse})
+
+	try:
+		response = requests.post(
+			f"{URL}/v4/Product/UpdateProductAvailableStockList",
+			headers=HEADER,
+			data=json.dumps(data),
+			timeout=20
+		)
+		response.raise_for_status()
+		res = response.json()
+		return res
+	except requests.RequestException as e:
+		frappe.log_error(frappe.get_traceback(), _("Error updating product stock in Zort"))
+		print(_("Failed to update product stock in Zort: {0}").format(str(e)))
 
 # def create_api_logs():
 # 	"""

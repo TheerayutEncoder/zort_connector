@@ -1,3 +1,4 @@
+import json
 import frappe
 from frappe import _, _dict, get_cached_value
 from zort_connector.api import call_zort_api
@@ -134,6 +135,7 @@ def prepare_data(data: dict):
 		"payment_status": data.get("paymentstatus"),
 		"items": items,
 		"discount_amount": float(data.get("discountamount", 0) or 0),
+		"zort_api_order_data": json.dumps(data, indent=4, ensure_ascii=False),
 	}
 
 	frappe.logger().info("Prepared data for Sales Order: {}".format(prepared_data))
@@ -297,6 +299,7 @@ def update_sales_order_from_zort():
 			so_doc.payment_status = order.get("paymentstatus")
 			so_doc.tracking_no = order.get("trackingno")
 			so_doc.description = order.get("description", "")
+			so_doc.zort_api_order_data = json.dumps(order, indent=4, ensure_ascii=False)
 			# update warehouse in Items
 			warehouse = get_warehouse_from_zort(
 				zort_sales_order_no=so_doc.get("zort_sales_order_no"),
@@ -356,7 +359,7 @@ def get_existing_zort_order_ids():
 
 	return zort_order_ids
 
-def check_if_sales_order_can_be_submitted(so_name: str = "SO00250620-002") -> bool:
+def check_if_sales_order_can_be_submitted(so_name: str) -> bool:
 	"""
 	Check if a Sales Order can be submitted.
 	In case zort_sales_order_no is equal to tracking_no, it means the customer will receive the order at the storefront.

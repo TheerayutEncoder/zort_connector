@@ -1,7 +1,11 @@
 import json
 import frappe
 from frappe import _, _dict, get_cached_value
+from frappe.utils import strip_html_tags
+from erpnext.stock.utils import get_stock_balance
+
 from zort_connector.api import call_zort_api
+
 
 
 def create_sales_order_from_zort():
@@ -161,6 +165,7 @@ def create_item_from_zort(item: dict) -> str:
 			"item_group": "Products",
 			"stock_uom": item.get("unittext", default_stock_uom),
 			"is_stock_item": 1,
+			"sync_with_zort": 1,
 		})
 		item_doc.insert()
 		frappe.db.commit()
@@ -376,3 +381,91 @@ def check_if_sales_order_can_be_submitted(so_name: str) -> bool:
 			return False
 
 	return True
+
+# def check_stock_balance():
+# 	data = get_stock_balance(item_code="ACOT-UG-30724", warehouse="051 - Mega - P")
+# 	print(data)
+
+# def get_current_stock():
+# 	"""
+# 	Get the current stock of all items in the default warehouse.
+# 	This function retrieves the stock levels for all items in the specified warehouse.
+# 	"""
+# 	default_warehouse = get_cached_value("Stock Settings", None, "default_warehouse")
+# 	if not default_warehouse:
+# 		frappe.throw(_("Default warehouse is not set in Stock Settings."))
+
+# 	item_list = frappe.db.get_all(
+# 		"Item",
+# 		fields=["item_code"],
+# 		filters={"sync_with_zort": 1, "is_stock_item": 1},
+# 	)
+# 	print(item_list, "items to check stock")
+# 	print(type(item_list))
+# 	# x=2/0
+
+# 	stock_details = frappe.db.get_all(
+# 		"Bin",
+# 		fields=[
+# 			"sum(planned_qty) as planned_qty",
+# 			"sum(actual_qty) as actual_qty",
+# 			"sum(projected_qty) as projected_qty",
+# 			"item_code",
+# 		],
+# 		filters={"item_code": ["in", [item.item_code for item in item_list]]},
+# 		group_by="item_code",
+# 	)
+
+# 	print(len(stock_details), "items in stock")
+# 	# print(stock_details)
+# 	return stock_details
+
+@frappe.whitelist()
+def update_item_to_zort(item_code: str):
+	"""
+	Update an item in Zort.
+	This function can be customized to update the item in Zort. If there is no iten on zort, add it to Zort.
+	:param item_code: str - The item code to update in Zort.
+	"""
+
+	data = frappe.get_doc("Item", item_code)
+	if not data:
+		print(f"Item {item_code} not found.")
+		return {"status": "error", "message": _("Item not found.")}
+
+	sell_price, purchase_price = 0.0, 0.0
+
+	if frappe.db.exists("Item Price", {"item_code": item_code, "price_list": "Standard Selling", "selling": 1}):
+		item_price_selling = frappe.get_doc("Item Price", {"item_code": item_code, "price_list": "Standard Selling", "selling": 1})
+		sell_price = item_price_selling.price_list_rate
+
+	if frappe.db.exists("Item Price", {"item_code": item_code, "price_list": "Standard Buying", "buying": 1}):
+		item_price_buying = frappe.get_doc("Item Price", {"item_code": item_code, "price_list": "Standard Buying", "buying": 1})
+		purchase_price = item_price_buying.price_list_rate
+
+	# If item is exists in Zort
+	item = call_zort_api.get_products(item_code)
+	item_exist_in_zort = bool(item.get("count", 0))
+
+	item_data = {
+		"sku": item_code,
+		"name": data.item_name,
+		"sellprice": sell_price,
+		"purchaseprice": purchase_price,
+		"unittext": data.stock_uom,
+		"sell_vat_status": 0,
+		"purchase_vat_status": 0,
+		"description": strip_html_tags(data.description) or "",
+	}
+
+	if not item_exist_in_zort:
+		# Add item to Zort
+		res = call_zort_api.add_product(item_data)
+		return {"status": "success", "message": _("Item added to Zort successfully.")}
+	elif item_exist_in_zort:
+		# Update item in Zort
+		id = item.get("list", [{}])[0].get("id", 0)
+		res = call_zort_api.update_product(id=id, data=item_data)
+		return {"status": "success", "message": _("Item updated to Zort successfully.")}
+
+	return {"status": "success", "message": _("Nothing to update to Zort.")}

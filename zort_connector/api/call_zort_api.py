@@ -114,6 +114,116 @@ def update_product_available_stock_list(warehouse: str, data: dict) -> dict:
 		frappe.log_error(frappe.get_traceback(), _("Error updating product stock in Zort"))
 		print(_("Failed to update product stock in Zort: {0}").format(str(e)))
 
+def get_products(sku: str = "") -> dict:
+	"""
+	Fetch a list of products from Zort.
+	:param sku: str - SKU of the product to fetch (optional).
+	:return: dict - JSON response containing the list of products.
+
+	Note: If SKU is provided, it will return details for that specific product.
+	"""
+	HEADER.update({"sku": sku})
+
+	PARAMS = {
+		# "limit": 50,
+		# "page": 1,
+		# "variationid": 107866,
+		# "warehousecode": "W0001",
+		# "inventorystatus": 0,
+		# "createdafter": "2021-09-15",
+		# "createdbefore": "2021-09-15",
+		# "updatedafter": "2021-09-15",
+		# "updatedbefore": "2021-09-15",
+		# "categoryid": 123,
+		"searchsku": sku,
+	}
+	try:
+		response = requests.get(
+			f"{URL}/v4/Product/GetProducts",
+			headers=HEADER,
+			params=PARAMS,
+			timeout=20
+		)
+		response.raise_for_status()
+		data = response.json()
+		return data
+	except requests.RequestException as e:
+		frappe.log_error(frappe.get_traceback(), _("Error fetching products from Zort"))
+		print(_("Failed to fetch products from Zort: {0}").format(str(e)))
+
+
+def add_product(data: dict) -> dict:
+	"""
+	Add a new product to Zort.
+	:param data: dict - JSON data containing product details.
+	:return: dict - JSON response from the Zort API after adding the product.
+
+	Note: Data structure should be like:
+	{
+		"sku": "P0014",
+		"name": "Wit Day - Vitamin B",
+		"sellprice": "20.00",
+		"purchaseprice": "10.00",
+		"unittext": "Piece",
+		"weight": "500",
+		"sell_vat_status": 2,
+		"purchase_vat_status": 2
+	}
+	"""
+
+	try:
+		response = requests.post(
+			f"{URL}/v4/Product/AddProduct",
+			headers=HEADER,
+			data=json.dumps(data),
+			timeout=20
+		)
+		response.raise_for_status()
+		res = response.json()
+		return res
+	except requests.RequestException as e:
+		frappe.log_error(frappe.get_traceback(), _("Error adding product to Zort"))
+		print(_("Failed to add product to Zort: {0}").format(str(e)))
+
+def update_product(id: int, data: dict) -> dict:
+	"""
+	Update an existing product in Zort.
+	:param id: int - ID of the product to update.
+	:param data: dict - JSON data containing product details.
+	:return: dict - JSON response from the Zort API after updating the product.
+
+	Note: Data structure should be like:
+	{
+		"sku": "P0014",
+		"name": "Wit Day - Vitamin B",
+		"sellprice": "20.00",
+		"purchaseprice": "10.00",
+		"unittext": "Piece",
+		"weight": "500",
+		"sell_vat_status": 2,
+		"purchase_vat_status": 2
+	}
+	"""
+	PARAMS = {
+		"id": id,
+	}
+
+	try:
+		response = requests.post(
+			f"{URL}/v4/Product/UpdateProduct",
+			headers=HEADER,
+			params=PARAMS,
+			data=json.dumps(data),
+			timeout=20
+		)
+		response.raise_for_status()
+		res = response.json()
+		return res
+	except requests.RequestException as e:
+		frappe.log_error(frappe.get_traceback(), _("Error updating product in Zort"))
+		print(_("Failed to update product in Zort: {0}").format(str(e)))
+
+
 # def create_api_logs():
 # 	"""
 # 	Create an API log entry for the Zort Connector API.

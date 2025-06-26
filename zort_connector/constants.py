@@ -79,5 +79,13 @@ ZORT_CUSTOM_FIELDS = {
 			"read_only": 1,
 			"allow_on_submit": 1,
 		},
-	]
+	],
+	"Item": [
+		{
+			"fieldname": "sync_with_zort",
+			"fieldtype": "Check",
+			"label": "Sync with Zort",
+			"insert_after": "is_stock_item",
+		},
+	],
 }

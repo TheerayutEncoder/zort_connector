@@ -78,13 +78,13 @@ def prepare_data(data: dict):
 	items = []
 	for item in data.get("list", []):
 
-		uom = create_uom_from_zort(item)
-		if not uom:
-			print("Failed to create UOM.")
-			return {"status": "error", "message": _("Failed to create UOM.")}
-
 		sku = item.get("sku")
-		item_code = sku if frappe.db.exists("Item", sku) else create_item_from_zort(item)
+
+		if not frappe.db.exists("Item", sku):
+			return {"status": "error", "message": _("Item with SKU {} does not exist.").format(sku)}
+
+		item_code = sku
+		uom = frappe.db.get_value("Item", sku, "stock_uom")
 
 		items.append({
 			"item_code": item_code,
@@ -128,6 +128,7 @@ def prepare_data(data: dict):
 	prepared_data = {
 		"customer": customer,
 		"transaction_date": data.get("orderdateString"),
+		"is_order_from_zort": 1,
 		"order_type": "Sales",
 		"zort_order_id": data.get("id"),
 		"zort_sales_order_no": data.get("number"),
@@ -145,35 +146,6 @@ def prepare_data(data: dict):
 	frappe.logger().info("Prepared data for Sales Order: {}".format(prepared_data))
 
 	return prepared_data
-
-def create_item_from_zort(item: dict) -> str:
-	"""
-	Create an Item from Zort data.
-	This function can be customized to create an Item in Frappe.
-	"""
-	item_code = item.get("sku")
-	if not item_code:
-		frappe.logger().error("Item code is required to create an item.")
-		return {"status": "error", "message": _("Item code is required.")}
-
-	default_stock_uom = get_cached_value("Stock Settings", None, "stock_uom")
-	try:
-		item_doc = frappe.get_doc({
-			"doctype": "Item",
-			"item_code": item_code,
-			"item_name": item.get("name", item_code),
-			"item_group": "Products",
-			"stock_uom": item.get("unittext", default_stock_uom),
-			"is_stock_item": 1,
-			"sync_with_zort": 1,
-		})
-		item_doc.insert()
-		frappe.db.commit()
-		frappe.logger().info(f"Item created: {item_doc.name}")
-	except Exception as e:
-		frappe.logger().error(f"Failed to create Item: {str(e)}")
-
-	return item_code
 
 def create_customer_from_zort(data: dict) -> str:
 	"""
@@ -250,36 +222,6 @@ def create_customer_from_zort(data: dict) -> str:
 			frappe.logger().error(f"Failed to create Customer or Address: {str(e)}")
 			return ""
 	return customer_name
-
-def create_uom_from_zort(item: dict) -> str:
-	"""
-	Create a UOM (Unit of Measure) from Zort data.
-	This function can be customized to create a UOM in Frappe.
-	"""
-	uom_name = item.get("unittext")
-
-	if not uom_name:
-		frappe.logger().error("UOM name is required to create a UOM.")
-		return ""
-
-	if not frappe.db.exists("UOM", {"uom_name": uom_name}):
-		try:
-			uom_doc = frappe.get_doc({
-				"doctype": "UOM",
-				"uom_name": uom_name,
-				"uom_type": "Stock UOM"
-			})
-			uom_doc.insert()
-			frappe.db.commit()
-			print(f"UOM created: {uom_doc.name}")
-			frappe.logger().info(f"UOM created: {uom_doc.name}")
-		except Exception as e:
-			print(f"Failed to create UOM: {str(e)}")
-			frappe.logger().error(f"Failed to create UOM: {str(e)}")
-	else:
-		frappe.logger().info(f"UOM already exists: {uom_name}")
-
-	return uom_name
 
 def update_sales_order_from_zort():
 	"""
@@ -382,44 +324,6 @@ def check_if_sales_order_can_be_submitted(so_name: str) -> bool:
 
 	return True
 
-# def check_stock_balance():
-# 	data = get_stock_balance(item_code="ACOT-UG-30724", warehouse="051 - Mega - P")
-# 	print(data)
-
-# def get_current_stock():
-# 	"""
-# 	Get the current stock of all items in the default warehouse.
-# 	This function retrieves the stock levels for all items in the specified warehouse.
-# 	"""
-# 	default_warehouse = get_cached_value("Stock Settings", None, "default_warehouse")
-# 	if not default_warehouse:
-# 		frappe.throw(_("Default warehouse is not set in Stock Settings."))
-
-# 	item_list = frappe.db.get_all(
-# 		"Item",
-# 		fields=["item_code"],
-# 		filters={"sync_with_zort": 1, "is_stock_item": 1},
-# 	)
-# 	print(item_list, "items to check stock")
-# 	print(type(item_list))
-# 	# x=2/0
-
-# 	stock_details = frappe.db.get_all(
-# 		"Bin",
-# 		fields=[
-# 			"sum(planned_qty) as planned_qty",
-# 			"sum(actual_qty) as actual_qty",
-# 			"sum(projected_qty) as projected_qty",
-# 			"item_code",
-# 		],
-# 		filters={"item_code": ["in", [item.item_code for item in item_list]]},
-# 		group_by="item_code",
-# 	)
-
-# 	print(len(stock_details), "items in stock")
-# 	# print(stock_details)
-# 	return stock_details
-
 @frappe.whitelist()
 def update_item_to_zort(item_code: str):
 	"""
@@ -469,3 +373,41 @@ def update_item_to_zort(item_code: str):
 		return {"status": "success", "message": _("Item updated to Zort successfully.")}
 
 	return {"status": "success", "message": _("Nothing to update to Zort.")}
+
+def get_current_stock():
+	"""
+	Get the current stock of all items in the default warehouse.
+	This function retrieves the stock levels for all items in the specified warehouse.
+	"""
+	default_warehouse = get_cached_value("Stock Settings", None, "default_warehouse")
+	if not default_warehouse:
+		frappe.throw(_("Default warehouse is not set in Stock Settings."))
+
+	item_list = frappe.db.get_all(
+		"Item",
+		fields=["item_code"],
+		filters={"sync_with_zort": 1, "is_stock_item": 1},
+	)
+	warehouse_list = frappe.db.get_all(
+		"Warehouse",
+		fields=["name"],
+		filters={"sync_with_zort": 1}
+	)
+	print("items to check stock", item_list)
+	print("warehouses to check stock", warehouse_list)
+
+	stock_details = frappe.db.get_all(
+		"Bin",
+		fields=[
+			"sum(actual_qty) as actual_qty",
+			"sum(reserved_qty) as reserved_qty",
+			"item_code",
+		],
+		filters={"item_code": ["in", [item.item_code for item in item_list]]},
+		group_by="item_code",
+	)
+	print("Stock details fetched from Bin:", stock_details)
+
+	print(len(stock_details), "items in stock")
+	# print(stock_details)
+	return stock_details

@@ -162,6 +162,10 @@ before_app_uninstall = "zort_connector.utils.before_app_uninstall"
 
 # Overriding Methods
 # ------------------------------
+override_doctype_class = {
+	"Sales Order": "zort_connector.custom.sales_order.SalesOrderZort",
+}
+
 #
 # override_whitelisted_methods = {
 # 	"frappe.desk.doctype.event.event.get_events": "zort_connector.event.get_events"

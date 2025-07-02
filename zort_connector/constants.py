@@ -79,6 +79,13 @@ ZORT_CUSTOM_FIELDS = {
 			"read_only": 1,
 			"allow_on_submit": 1,
 		},
+		{
+			"fieldname": "is_order_from_zort",
+			"fieldtype": "Check",
+			"label": "Is Order from Zort",
+			"insert_after": "zort_api_order_data",
+			"read_only": 1,
+		},
 	],
 	"Item": [
 		{
@@ -88,4 +95,22 @@ ZORT_CUSTOM_FIELDS = {
 			"insert_after": "is_stock_item",
 		},
 	],
+	"Warehouse": [
+		{
+			"fieldname": "sync_with_zort",
+			"fieldtype": "Check",
+			"label": "Sync with Zort",
+			"insert_after": "is_rejected_warehouse",
+			"depends_on": "eval:doc.is_group == 0",
+		}
+	],
+	"Bin": [
+		{
+			"fieldname": "reserved_qty_from_zort",
+			"fieldtype": "Float",
+			"label": "Reserved Qty from Zort",
+			"insert_after": "reserved_stock",
+			"read_only": 1,
+		}
+	]
 }

@@ -223,25 +223,3 @@ def update_product(id: int, data: dict) -> dict:
 		frappe.log_error(frappe.get_traceback(), _("Error updating product in Zort"))
 		print(_("Failed to update product in Zort: {0}").format(str(e)))
 
-
-# def create_api_logs():
-# 	"""
-# 	Create an API log entry for the Zort Connector API.
-# 	This function logs the API request details for tracking and debugging purposes.
-# 	"""
-# 	# Create an API Log doctype
-# 	api_log_data = {
-# 		"doctype": "API Request Log",
-# 		"path": "/api/method/zort_connector.api.custom_api.create_sales_order_from_zort",
-# 		"method": "POST",
-# 		"user": frappe.session.user,
-# 	}
-
-# 	try:
-# 		api_log = frappe.get_doc(api_log_data)
-# 		api_log.insert()
-# 		frappe.db.commit()
-# 		print(f"API Log created successfully: {api_log.name}")
-# 	except Exception as e:
-# 		frappe.log_error(frappe.get_traceback(), _("Error creating API Log"))
-# 		print(f"Error creating API Log: {str(e)}")

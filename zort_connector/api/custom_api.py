@@ -393,8 +393,6 @@ def get_current_stock():
 		fields=["name"],
 		filters={"sync_with_zort": 1}
 	)
-	print("items to check stock", item_list)
-	print("warehouses to check stock", warehouse_list)
 
 	stock_details = frappe.db.get_all(
 		"Bin",
@@ -406,8 +404,5 @@ def get_current_stock():
 		filters={"item_code": ["in", [item.item_code for item in item_list]]},
 		group_by="item_code",
 	)
-	print("Stock details fetched from Bin:", stock_details)
 
-	print(len(stock_details), "items in stock")
-	# print(stock_details)
 	return stock_details

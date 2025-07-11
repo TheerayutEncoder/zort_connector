@@ -41,5 +41,4 @@ class SalesOrderZort(SalesOrder):
 					else:
 						_valid_for_reserve(d.item_code, d.warehouse)
 		for item_code, warehouse in item_wh_list:
-			print("get_reserve_qty_from_zort", get_reserved_qty_from_zort(item_code, warehouse))
 			update_bin_qty(item_code, warehouse, {"reserved_qty_from_zort": get_reserved_qty_from_zort(item_code, warehouse)})

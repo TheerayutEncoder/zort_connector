@@ -142,19 +142,17 @@ before_app_uninstall = "zort_connector.utils.before_app_uninstall"
 
 # Scheduled Tasks
 # ---------------
-# scheduler_events = {
-#     "all": [
-#         "frappe.email.queue.flush"  # This triggers the scheduler engine
-#     ],
-#     "cron": {
-#         "* * * * *": [
-#             "zort_connector.api.custom_api.create_sales_order_from_zort"
-#         ]
-#     },
-# 	"hourly": [
-#         "zort_connector.api.custom_api.create_sales_order_from_zort"
-#     ],
-# }
+scheduler_events = {
+    "all": [
+        "frappe.email.queue.flush"  # This triggers the scheduler engine
+    ],
+    "cron": {
+        "5 * * * *": [
+            "zort_connector.api.custom_api.create_sales_order_from_zort",
+            "zort_connector.api.custom_api.update_sales_order_from_zort"
+        ]
+    },
+}
 # Testing
 # -------
 

@@ -1,9 +1,6 @@
 ### Zort Connector
 
-Connect Zort with ERPNext
-
-<img width="1305" height="452" alt="Selection_579" src="https://github.com/user-attachments/assets/72ad1f7e-641e-43e0-9ab3-8ec540b37770" />
-
+Connect Zort with erpnext
 
 ### Installation
 
@@ -18,17 +15,17 @@ bench install-app zort_connector
 
 1. Go to `Zort setting` doctype
 2. Fill data to connect with Zort (You can get this data by going to your [Zort Account](https://secure.zortout.com/Home/LogOn))
-   
+
    2.1 Zort Endpoint URL
-   
+
    2.2 Storename
-   
+
    2.3 apikey
-   
+
    2.4 apisecret
-   
+
    2.5 Default Warehouse (Use for erpnext to consider, which warehouse should be use to create sales order)
-   
+
 <img width="1792" height="652" alt="Selection_578" src="https://github.com/user-attachments/assets/5c182a31-f2ee-42d2-8900-33e0169026d4" />
 
 ### Features
@@ -87,8 +84,3 @@ Pre-commit is configured to use the following tools for checking and formatting 
 ### License
 
 mit
-
-### More information about Zort
-
-- [API documentation](https://developers.zortout.com/)
-- Line 

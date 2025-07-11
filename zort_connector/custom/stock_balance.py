@@ -38,5 +38,4 @@ def get_reserved_qty_from_zort(item_code, warehouse):
 		)
 	)
 	reserved_qty_from_zort = query.run(as_dict=True)
-	print("Reserved Qty from Zort:", reserved_qty_from_zort)
 	return flt(reserved_qty_from_zort[0].get("total_reserved_qty", 0)) if reserved_qty_from_zort else 0.0

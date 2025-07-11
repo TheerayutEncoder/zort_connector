@@ -2,6 +2,8 @@
 
 Connect Zort with erpnext
 
+<img width="1305" height="452" alt="Selection_579" src="https://github.com/user-attachments/assets/ccf26b8a-0e0a-4086-b7c6-7fd21fad4078" />
+
 ### Installation
 
 You can install this app using the [bench](https://github.com/frappe/bench) CLI:
